@@ -1,5 +1,4 @@
-[README (1).md](https://github.com/user-attachments/files/35221338/README.1.md)
-
+[README.md](https://github.com/user-attachments/files/35221347/README.md)
 # Active Directory Home Lab
 
 A Windows Server 2022 lab I built in VirtualBox to practice the account management tasks a help desk technician handles every day: creating users, organizing them into OUs and groups, resetting passwords, disabling accounts, and unlocking users who are locked out.
