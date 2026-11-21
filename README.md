@@ -1,4 +1,3 @@
-[README.md](https://github.com/user-attachments/files/35221347/README.md)
 # Active Directory Home Lab
 
 A Windows Server 2022 lab I built in VirtualBox to practice the account management tasks a help desk technician handles every day: creating users, organizing them into OUs and groups, resetting passwords, disabling accounts, and unlocking users who are locked out.
@@ -83,7 +82,7 @@ I reset Jordan's password and checked "User must change password at next logon,"
 ### 9. Disable an account
 I created Sam Rivera in the IT OU and disabled the account to simulate offboarding. Disabling instead of deleting keeps the account's group memberships and history in case they're needed later. The down arrow on the icon shows the account is disabled.
 
-![Disabled account](screenshots/14-disabled_account.png)
+![Disabled account](screenshots/14-disabled-account.png)
 
 ### 10. Set an account lockout policy
 In Group Policy Management, I edited the Default Domain Policy to lock accounts after 3 invalid sign-in attempts, then ran `gpupdate /force` to apply it right away.
