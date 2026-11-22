@@ -1,22 +1,25 @@
 # Active Directory Home Lab
 
-A Windows Server 2022 lab I built in VirtualBox to practice the account management tasks a help desk technician handles every day: creating users, organizing them into OUs and groups, resetting passwords, disabling accounts, and unlocking users who are locked out.
+A Windows Server 2022 and Windows 11 lab I built in VirtualBox to practice the work a help desk technician handles every day: creating users, organizing them into OUs and groups, resetting passwords, disabling accounts, unlocking users who are locked out, and joining workstations to the domain.
 
 ## Lab Environment
 
 | Component | Details |
 |---|---|
 | Hypervisor | Oracle VirtualBox |
-| Server OS | Windows Server 2022 Standard Evaluation (Desktop Experience) |
-| Server name | DC01 |
+| Server | DC01, Windows Server 2022 Standard Evaluation (Desktop Experience), 2 CPUs, 4 GB RAM, 50 GB disk |
+| Client | CLIENT01, Windows 11 Enterprise Evaluation, 2 CPUs, 4 GB RAM, 64 GB disk, TPM 2.0, Secure Boot |
 | Domain | homelab.local |
-| VM resources | 2 CPUs, 6 GB RAM (raised from 4 GB during troubleshooting), 50 GB disk |
-| Roles | Active Directory Domain Services, DNS, Group Policy Management |
+| Network | VirtualBox NAT Network "HomelabNet" (192.168.50.0/24) |
+| DC01 address | 192.168.50.10 (static), also the domain's DNS server |
+| Roles on DC01 | Active Directory Domain Services, DNS, Group Policy Management |
 
 ## What I Built
 
 ```
 homelab.local
+├── Computers
+│   └── CLIENT01 (Windows 11, joined in Part 3)
 └── Staff (OU)
     ├── IT (OU)
     │   └── Sam Rivera (disabled to simulate an offboarded employee)
@@ -98,6 +101,42 @@ To test the policy, I used `runas /user:homelab\jlee cmd` and entered the wrong 
 
 ![Account unlocked](screenshots/18-account-unlocked.png)
 
+## Part 3: Joining a Windows 11 Client to the Domain
+
+### 12. Put both VMs on a shared network
+VirtualBox's default NAT setting gives each VM its own isolated network, so the client could never reach the server. I created a NAT Network called HomelabNet (192.168.50.0/24), which puts both VMs on the same network while still giving them internet access, and moved DC01 onto it.
+
+![NAT Network setup](screenshots/19-nat-network.png)
+
+### 13. Give the domain controller a static IP address
+A domain controller should never change addresses, since every client depends on it for sign-in and DNS. I set DC01 to 192.168.50.10 with itself (127.0.0.1) as its DNS server, then ran `ipconfig /registerdns` and restarted the Netlogon service so the domain's DNS records pointed to the new address. Pings to the gateway and to google.com confirmed the network and DNS were working.
+
+![DC01 static IP settings](screenshots/20-dc01-static-ip.png)
+
+### 14. Build the Windows 11 client
+I created CLIENT01 with TPM 2.0, Secure Boot, and EFI enabled, which Windows 11 requires, and attached it to HomelabNet. During setup I used "Domain join instead" to create a local account rather than a Microsoft account, the way a business would set up a workstation.
+
+![CLIENT01 VM summary](screenshots/21-client-vm-summary.png)
+
+### 15. Point the client to the domain's DNS
+A client finds its domain through DNS, so I set CLIENT01's DNS server to DC01 (192.168.50.10) while leaving its IP address on DHCP. Before joining, I confirmed three things: `ipconfig /all` showed the right DNS server, a ping reached DC01, and `nslookup homelab.local` resolved to DC01's address.
+
+![Client IP and DNS settings](screenshots/22-client-ip-dns.png)
+
+### 16. Rename the computer and join the domain
+In System Properties, I renamed the computer from its random default name to CLIENT01 and joined it to homelab.local in the same step, using domain admin credentials.
+
+![Welcome to the homelab.local domain](screenshots/23-domain-join.png)
+
+After the restart, CLIENT01 appeared in the Computers container in Active Directory Users and Computers.
+
+![CLIENT01 in Active Directory](screenshots/24-client-in-aduc.png)
+
+### 17. Sign in as a domain user
+I signed in to CLIENT01 as Jordan Lee (HOMELAB\jlee), the test user from Part 2. Running `whoami`, `hostname`, and `echo %logonserver%` confirmed he was signed in with his domain account, on CLIENT01, and authenticated by DC01.
+
+![whoami, hostname, and logon server](screenshots/25-whoami.png)
+
 ## Troubleshooting Along the Way
 
 After promoting the server to a domain controller, the VM froze on a black screen during restart, and a reset didn't fix it. I worked through it step by step:
@@ -106,7 +145,13 @@ After promoting the server to a domain controller, the VM froze on a black scree
 - Fixed the boot order so the hard disk came before the optical drive, and removed the installer ISO so the VM wouldn't try to boot from it.
 - Gave the restart enough time. The first boot after promotion is slow, and it finished on its own once the VM had the resources it needed.
 
-I also ran into a display issue where the VM was too small to read on a high-resolution screen, which I fixed with VirtualBox's display scaling.
+I also ran into a display issue where the VM was too small to read on a high-resolution screen. I fixed it at first with VirtualBox's display scaling, then installed VirtualBox Guest Additions on both VMs so the screen resizes with the window. On DC01, the Windows Server installer disc was still in the virtual drive, so I removed it before Guest Additions could load.
+
+Part 3 brought a few more problems:
+
+- Domain join rejected the password. The first join attempt failed with "The user name or password is incorrect." That error told me the client had actually reached the domain controller, so the network and DNS were fine and only the credentials were wrong. I reset the domain Administrator password on DC01 with `net user` and the join went through.
+- Forgotten user password. I didn't remember Jordan's password from Part 2, so I reset it from Active Directory Users and Computers with "User must change password at next logon" checked, the same way I would for a user calling the help desk.
+- Running two VMs on one laptop. With both VMs running, DC01 froze at times. Once the domain controller was set up, it no longer needed 6 GB, so I lowered it to 4 GB, gave the client 4 GB, and closed apps on the host to free up memory.
 
 ## Skills Practiced
 
@@ -117,10 +162,14 @@ I also ran into a display issue where the VM was too small to read on a high-res
 - Disabling accounts for offboarding
 - Configuring an account lockout policy with Group Policy
 - Identifying and unlocking locked-out accounts
-- Troubleshooting VM resource and boot order problems
+- Configuring a static IP address and DNS for a domain controller
+- Building a Windows 11 workstation with TPM, Secure Boot, and EFI
+- Pointing a client to internal DNS and verifying it with `ipconfig`, `ping`, and `nslookup`
+- Joining a workstation to a domain and confirming it in Active Directory
+- Verifying a domain sign-in with `whoami` and `%logonserver%`
+- Troubleshooting VM resources, boot order, and domain join credential errors
 
 ## Next Steps
 
-- Join a Windows 11 client to the domain and sign in as a domain user
 - Push a mapped network drive to the Sales team through Group Policy
 - Repeat the account tasks in PowerShell (`New-ADUser`, `Set-ADAccountPassword`, `Unlock-ADAccount`, `Search-ADAccount -LockedOut`)
