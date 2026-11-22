@@ -106,36 +106,36 @@ To test the policy, I used `runas /user:homelab\jlee cmd` and entered the wrong 
 ### 12. Put both VMs on a shared network
 VirtualBox's default NAT setting gives each VM its own isolated network, so the client could never reach the server. I created a NAT Network called HomelabNet (192.168.50.0/24), which puts both VMs on the same network while still giving them internet access, and moved DC01 onto it.
 
-![NAT Network setup](screenshots/19-nat-network.png)
+![NAT Network setup](19-nat-network.png)
 
 ### 13. Give the domain controller a static IP address
 A domain controller should never change addresses, since every client depends on it for sign-in and DNS. I set DC01 to 192.168.50.10 with itself (127.0.0.1) as its DNS server, then ran `ipconfig /registerdns` and restarted the Netlogon service so the domain's DNS records pointed to the new address. Pings to the gateway and to google.com confirmed the network and DNS were working.
 
-![DC01 static IP settings](screenshots/20-dc01-static-ip.png)
+![DC01 static IP settings](20-dc01-static-ip.png)
 
 ### 14. Build the Windows 11 client
 I created CLIENT01 with TPM 2.0, Secure Boot, and EFI enabled, which Windows 11 requires, and attached it to HomelabNet. During setup I used "Domain join instead" to create a local account rather than a Microsoft account, the way a business would set up a workstation.
 
-![CLIENT01 VM summary](screenshots/21-client-vm-summary.png)
+![CLIENT01 VM summary](21-client-vm-summary.png)
 
 ### 15. Point the client to the domain's DNS
 A client finds its domain through DNS, so I set CLIENT01's DNS server to DC01 (192.168.50.10) while leaving its IP address on DHCP. Before joining, I confirmed three things: `ipconfig /all` showed the right DNS server, a ping reached DC01, and `nslookup homelab.local` resolved to DC01's address.
 
-![Client IP and DNS settings](screenshots/22-client-ip-dns.png)
+![Client IP and DNS settings](22-client-ip-dns.png)
 
 ### 16. Rename the computer and join the domain
 In System Properties, I renamed the computer from its random default name to CLIENT01 and joined it to homelab.local in the same step, using domain admin credentials.
 
-![Welcome to the homelab.local domain](screenshots/23-domain-join.png)
+![Welcome to the homelab.local domain](23-domain-join.png)
 
 After the restart, CLIENT01 appeared in the Computers container in Active Directory Users and Computers.
 
-![CLIENT01 in Active Directory](screenshots/24-client-in-aduc.png)
+![CLIENT01 in Active Directory](24-client-in-aduc.png)
 
 ### 17. Sign in as a domain user
 I signed in to CLIENT01 as Jordan Lee (HOMELAB\jlee), the test user from Part 2. Running `whoami`, `hostname`, and `echo %logonserver%` confirmed he was signed in with his domain account, on CLIENT01, and authenticated by DC01.
 
-![whoami, hostname, and logon server](screenshots/25-whoami.png)
+![whoami, hostname, and logon server](25-whoami.png)
 
 ## Troubleshooting Along the Way
 
